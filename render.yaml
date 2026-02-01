@@ -20,6 +20,8 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         sync: false
+      - key: ADMIN_EMAIL
+        sync: false
 
   # Frontend: static site (build from repo) or use Docker image
   - type: web

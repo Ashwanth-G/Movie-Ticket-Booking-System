@@ -1,11 +1,13 @@
-# Build stage not required for Node backend; single stage is sufficient
+# Single-stage production image
 FROM node:20-alpine
 
 WORKDIR /app
 
+# Install production dependencies only (npm ci requires package-lock.json)
 COPY package*.json ./
-RUN npm ci --only=production 2>/dev/null || npm install --omit=dev
+RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
 
+# Copy application source
 COPY . .
 
 EXPOSE 5000

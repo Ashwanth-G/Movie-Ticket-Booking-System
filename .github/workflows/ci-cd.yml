@@ -1,6 +1,7 @@
 # CI/CD: Build → Test → Dockerize → Push to Docker Hub
-# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
-# Optional: RENDER_DEPLOY_HOOK_URL (for Render deploy hook)
+# Secrets required:
+#   DOCKERHUB_USERNAME
+#   DOCKERHUB_TOKEN
 
 name: CI/CD Pipeline
 
@@ -122,10 +123,3 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Optional: trigger Render deploy (set RENDER_DEPLOY_HOOK_URL in repo secrets)
-      - name: Trigger Render deploy
-        if: secrets.RENDER_DEPLOY_HOOK_URL != ''
-        run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-        continue-on-error: true
