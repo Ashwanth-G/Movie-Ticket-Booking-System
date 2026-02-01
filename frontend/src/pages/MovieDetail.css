@@ -20,22 +20,23 @@
   min-width: 0;
 }
 
+/* Poster: 200px wide, 2:3 aspect => height 300px */
 .movie-detail-poster {
   flex-shrink: 0;
   width: 200px;
 }
 
+/* Trailer: same height as poster (300px), 16:9 ratio => width 300 * 16/9 */
 .movie-detail-trailer {
   flex-shrink: 0;
-  width: 320px;
-  min-height: 180px;
+  width: calc(300px * 16 / 9); /* ~533px, 16:9 */
+  height: 300px;
 }
 
 .trailer-embed-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%;
-  height: 0;
+  height: 100%;
   overflow: hidden;
   border-radius: 8px;
   background: #0f0f0f;
@@ -52,6 +53,8 @@
 
 .trailer-placeholder {
   width: 100%;
+  height: 100%;
+  min-height: 300px;
   aspect-ratio: 16/9;
   background: #e2e8f0;
   border-radius: 8px;

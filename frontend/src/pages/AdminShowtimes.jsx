@@ -119,6 +119,15 @@ export default function AdminShowtimes() {
     );
   }
 
+  const filteredShowtimes = screenSearch.trim()
+    ? showtimes.filter((st) => {
+        const search = screenSearch.trim().toLowerCase();
+        const theatre = (st.theatre || '').toLowerCase();
+        const screen = (st.screen || '').toString().toLowerCase();
+        return theatre.includes(search) || screen.includes(search);
+      })
+    : showtimes;
+
   return (
     <div className="container admin-showtimes-page">
       <h1>Add Screen / Showtime (Admin)</h1>
