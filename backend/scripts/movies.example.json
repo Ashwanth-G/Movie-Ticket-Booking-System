@@ -1,0 +1,11 @@
+[
+  {
+    "title": "Sample Movie",
+    "genre": "Drama",
+    "duration": 120,
+    "language": "English",
+    "description": "Optional short description.",
+    "poster": "",
+    "isActive": true
+  }
+]

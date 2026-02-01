@@ -1,0 +1,56 @@
+.admin-bookings-page {
+  padding-top: 0.5rem;
+}
+
+.admin-bookings-page h1 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-booking-card {
+  padding: 1.25rem;
+  max-width: 600px;
+}
+
+.admin-booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.admin-booking-card .booking-id {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.admin-booking-card .booking-status {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.admin-booking-customer,
+.admin-booking-movie,
+.admin-booking-showtime,
+.admin-booking-seats,
+.admin-booking-amount,
+.admin-booking-date {
+  font-size: 0.9rem;
+  margin: 0.35rem 0;
+  color: #374151;
+}
+
+.admin-booking-card strong {
+  color: #1f2937;
+  margin-right: 0.25rem;
+}

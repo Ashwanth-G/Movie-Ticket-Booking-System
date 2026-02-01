@@ -1,0 +1,81 @@
+.navbar {
+  background: #1e293b;
+  color: white;
+  padding: 0.75rem 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-brand:hover {
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+.navbar-brand:hover .navbar-brand-text {
+  color: #93c5fd;
+}
+
+.navbar-logo {
+  height: 36px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  display: block;
+}
+
+.navbar-brand-text {
+  color: inherit;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navbar-links a {
+  color: #e2e8f0;
+  text-decoration: none;
+}
+
+.navbar-links a:hover {
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-user {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.navbar .btn-secondary {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.navbar .btn-secondary:hover {
+  background: #475569;
+  color: white;
+}

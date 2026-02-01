@@ -1,0 +1,781 @@
+Cursor Agent 1:
+Starting the Movie Ticket Booking System: checking the workspace and creating the architecture and database design.
+Workspace is empty. Creating the architecture and database design first.
+ARCHITECTURE.md
++133
+# Movie Ticket Booking System – Architecture## 1. OverviewProduction-ready MERN stack application with modular backend, React SPA frontend, JWT auth, role-based access, and DevOps (Docker, CI/CD, cloud deployment).
+FLOW.md
++47
+# User & System Flows## 1. Authentication Flow```
+DATABASE-DESIGN.md
++154
+# Database Design – MongoDB## 1. OverviewCollections: **users**, **movies**, **showtimes**, **seats**, **bookings**, **payments**.  
+Creating the architecture and flow diagram images.
+Checking where the images were saved and placing copies in docs.
+architecture-diagram.mmd
++32
+%% Architecture diagram - export to architecture-diagram.png using Mermaid Live Editor or CLIflowchart TB    subgraph Client["Client (Browser)"]        React["React SPA"]        Axios["Axios"]
+flow-diagram.mmd
++11
+%% User flow diagram - export to flow-diagram.png using Mermaid Live Editor or CLIflowchart LR    A[Login / Register] --> B[Movie Listing]    B --> C[Movie Details + Showtimes]    C --> D[Seat Selection]
+README.md
++23
+# Documentation## Contents- **ARCHITECTURE.md** – System architecture, backend/frontend layout, auth, seat locking, DevOps.
+Summary of what’s in place for architecture and database design:
+1. Architecture
+docs/ARCHITECTURE.md
+High-level system: Client (React SPA) → API/Proxy → Express backend (Routes, Controllers, Services, Middleware, Mongoose) → MongoDB.
+Backend layout: config, controllers, models, routes, middleware, services, utils.
+Frontend layout: components, pages, services, hooks.
+Auth: JWT, roles (user/admin), protected routes.
+Seat locking: statuses available | locked | booked, 5‑minute timeout, atomic updates, release on failure.
+DevOps: Docker, CI/CD, deployment.
+Security: bcrypt, validation, CORS, no secrets in code.
+docs/FLOW.md
+Auth flow: register/login → JWT → store token.
+Booking flow: movies → movie details → showtimes → seats → lock → confirm → confirmation / My Bookings.
+Seat lock flow: lock request → atomic update → timeout/release.
+Admin flows: movie/showtime CRUD behind admin-only routes.
+Diagrams
+docs/architecture-diagram.mmd – Mermaid source for system/backend architecture.
+docs/flow-diagram.mmd – Mermaid source for user booking flow.
+docs/README.md – How to export these to architecture-diagram.png and flow-diagram.png (Mermaid Live or mmdc).
+2. Database design
+docs/DATABASE-DESIGN.md
+users: email (unique), password (bcrypt), name, role (user/admin), timestamps. Index: email.
+movies: title, genre, duration, language, description, poster, isActive, timestamps. Indexes: title, isActive.
+showtimes: movieId (ref), theatre, screen, date, startTime, timestamps. Indexes: movieId, compound movieId + date + startTime.
+seats: showtimeId (ref), row, number, status (available | locked | booked), lockedAt, lockedBy (ref User), timestamps. Indexes: showtimeId, unique compound showtimeId + row + number, showtimeId + status.
+bookings: bookingId (unique), userId, showtimeId, seatIds[], status, totalAmount, timestamps. Indexes: bookingId, userId, showtimeId, userId + createdAt.
+payments (mock): bookingId (ref), amount, status, method, createdAt. Index: bookingId.
+Relationships and references (ObjectId) are documented.
+Seat locking and concurrency are described (atomic lock/unlock/book).
+3. Project structure (docs only so far)
+/movie-ticket-booking  (workspace: MovieTicketBookingSystem) └── docs      ├── ARCHITECTURE.md      ├── DATABASE-DESIGN.md      ├── FLOW.md      ├── README.md      ├── architecture-diagram.mmd      └── flow-diagram.mmd
+Generated images from the tool were saved under Cursor’s assets path. To have PNGs inside the repo, use the Mermaid files as in docs/README.md:
+npx mmdc -i docs/architecture-diagram.mmd -o docs/architecture-diagram.pngnpx mmdc -i docs/flow-diagram.mmd -o docs/flow-diagram.png
+Next step in the plan is implementing backend APIs (Express app, config, Mongoose models, auth, movies, showtimes, seats, bookings, middleware). Should I continue with the backend implementation next?
+Now generate backend code
+
+Implementing the full backend: creating the project structure and adding config, models, middleware, services, controllers, routes, and app entry point.
+package.json
++28
+{  "name": "movie-ticket-booking-backend",  "version": "1.0.0",  "description": "MERN Movie Ticket Booking System - Backend API",  "main": "src/server.js",
+.env.example
++14
+# ServerNODE_ENV=developmentPORT=5000# MongoDB
+db.js
++18
+const mongoose = require('mongoose');/** * Connect to MongoDB using MONGODB_URI from environment. * Called once at app startup.
+errors.js
++52
+/** * Custom API errors for consistent error responses. * Controllers and middleware use these to set status and message. */class AppError extends Error {
+constants.js
++40
+/** * Application constants. */// Seat status: available -> locked (by user) -> booked (after confirmation)
+User.js
++36
+const mongoose = require('mongoose');const { ROLES } = require('../utils/constants');const userSchema = new mongoose.Schema(  {
+Movie.js
++20
+const mongoose = require('mongoose');const movieSchema = new mongoose.Schema(  {    title: { type: String, required: true, trim: true },
+Showtime.js
++22
+const mongoose = require('mongoose');const showtimeSchema = new mongoose.Schema(  {    movieId: {
+Seat.js
++34
+const mongoose = require('mongoose');const { SEAT_STATUS } = require('../utils/constants');const seatSchema = new mongoose.Schema(  {
+Booking.js
++40
+const mongoose = require('mongoose');const { BOOKING_STATUS } = require('../utils/constants');const bookingSchema = new mongoose.Schema(  {
+Payment.js
++25
+const mongoose = require('mongoose');const { PAYMENT_STATUS } = require('../utils/constants');const paymentSchema = new mongoose.Schema(  {
+index.js
++12
+/** * Export all models for central access. */module.exports = {  User: require('./User'),
+auth.js
++33
+const jwt = require('jsonwebtoken');const { User } = require('../models');const { UnauthorizedError } = require('../utils/errors');/**
+requireRole.js
++22
+const { ForbiddenError } = require('../utils/errors');/** * Restrict route to given roles. Use after auth middleware. * Expects req.user to be set (role on req.user.role).
+validate.js
++19
+const { validationResult } = require('express-validator');const { BadRequestError } = require('../utils/errors');/** * Middleware to run express-validator and return 400 with errors if validation fails.
+errorHandler.js
++43
+const { AppError } = require('../utils/errors');/** * Global error handler. Sends JSON response with statusCode and message. * Mongoose validation/cast errors are normalized to 400.
+authService.js
++58
+const bcrypt = require('bcryptjs');const jwt = require('jsonwebtoken');const { User } = require('../models');const { BadRequestError, UnauthorizedError } = require('../utils/errors');const { ROLES } = require('../utils/constants');
+movieService.js
++45
+const { Movie } = require('../models');const { NotFoundError } = require('../utils/errors');const create = async (data) => {  return Movie.create(data);
+showtimeService.js
++47
+const { Showtime, Movie } = require('../models');const { NotFoundError } = require('../utils/errors');const create = async (data) => {  const movie = await Movie.findById(data.movieId);
+bookingService.js
++235
+const mongoose = require('mongoose');const { Seat, Showtime, Booking, Payment } = require('../models');const { BadRequestError, NotFoundError, ConflictError } = require('../utils/errors');const { SEAT_STATUS, LOCK_TIMEOUT_MS, BOOKING_STATUS, PAYMENT_STATUS } = require('../utils/constants');
+Adding controllers and validation helpers:
+authController.js
++35
+const authService = require('../services/authService');const register = async (req, res, next) => {  try {    const { email, password, name } = req.body;
+movieController.js
++73
+const movieService = require('../services/movieService');const create = async (req, res, next) => {  try {    const movie = await movieService.create(req.body);
+showtimeController.js
++72
+const showtimeService = require('../services/showtimeService');const create = async (req, res, next) => {  try {    const showtime = await showtimeService.create(req.body);
+bookingController.js
++123
+const bookingService = require('../services/bookingService');/** * GET /api/showtimes/:showtimeId/seats * Returns seat map for showtime. Expired locks are released first.
+Adding routes with validation:
+authRoutes.js
++23
+const express = require('express');const { body } = require('express-validator');const authController = require('../controllers/authController');const { validate } = require('../middleware/validate');
+movieRoutes.js
++65
+const express = require('express');const { body, param } = require('express-validator');const movieController = require('../controllers/movieController');const { auth } = require('../middleware/auth');const { requireRole } = require('../middleware/requireRole');
+showtimeRoutes.js
++73
+const express = require('express');const { body, param } = require('express-validator');const showtimeController = require('../controllers/showtimeController');const bookingController = require('../controllers/bookingController');const { auth } = require('../middleware/auth');
+bookingRoutes.js
++49
+const express = require('express');const { body, param } = require('express-validator');const bookingController = require('../controllers/bookingController');const { auth } = require('../middleware/auth');const { validate } = require('../middleware/validate');
+Adding profile route (GET /api/auth/me) and app entry (app.js + server.js).
+authController.js
++13
+/** Get current user profile (requires auth). */const getMe = async (req, res, next) => {  try {    res.status(200).json({      success: true,
+authRoutes.js
++1
+const authController = require('../controllers/authController');const { validate } = require('../middleware/validate');
+const authController = require('../controllers/authController');const { auth } = require('../middleware/auth');const { validate } = require('../middleware/validate');
+authRoutes.js
++1
+router.post('/login', loginValidators, validate, authController.login);
+router.post('/login', loginValidators, validate, authController.login);router.get('/me', auth, authController.getMe);
+Reordering showtime routes so /:showtimeId/seats is defined before /:id.
+showtimeRoutes.js
++3
+-3
+// Public: get showtime by idrouter.get('/:id', idParam, validate, showtimeController.findById);// Seats for a showtime (public read; lock/confirm require auth via booking routes)
+// Public: get showtime by idrouter.get('/:id', idParam, validate, showtimeController.findById);// Seats for a showtime (public read; lock/confirm require auth via booking routes)
+app.js
++46
+require('dotenv').config();const express = require('express');const cors = require('cors');const { connectDB } = require('./config/db');const { errorHandler } = require('./middleware/errorHandler');
+server.js
++16
+const app = require('./app');const { connectDB } = require('./config/db');const PORT = process.env.PORT || 5000;
+Creating a default seat map when a showtime is created.
+showtimeService.js
++21
+-2
+const { Showtime, Movie } = require('../models');const { NotFoundError } = require('../utils/errors');
+const { Showtime, Movie } = require('../models');const { Showtime, Movie, Seat } = require('../models');const { NotFoundError } = require('../utils/errors');const { SEAT_STATUS } = require('../utils/constants');/** Default seat map: rows A–E, 10 seats per row. */
+showtimeService.js
++1
+-1
+  await Seat.insertMany(seatDocs);  return showtime.toObject ? showtime.toObject() : showtime;};
+  return showtime.toObject ? showtime.toObject() : showtime;  await Seat.insertMany(seatDocs);  return showtime;};
+Fixing booking populate and adding backend .gitignore and Dockerfile.
+bookingService.js
+-1
+  return Booking.find({ userId })    .populate('showtimeId')    .populate({ path: 'showtimeId', populate: { path: 'movieId' } })
+    .populate('showtimeId')  return Booking.find({ userId })    .populate({ path: 'showtimeId', populate: { path: 'movieId' } })
+.gitignore
++6
+node_modules/.env*.logcoverage/.DS_Store
+Dockerfile
++15
+# Build stage not required for Node backend; single stage is sufficientFROM node:20-alpineWORKDIR /app
+Adding a simple seed script to create an admin user and verifying the app.
+seedAdmin.js
++39
+/** * One-time seed: create an admin user if no admin exists. * Usage: node scripts/seedAdmin.js * Set ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME in env or edit below. */
+package.json
++2
+-1
+    "dev": "node --watch src/server.js",    "test": "jest --coverage --forceExit"  },
+    "test": "jest --coverage --forceExit"    "dev": "node --watch src/server.js",    "test": "jest --coverage --forceExit",    "seed:admin": "node scripts/seedAdmin.js"  },
+Using errorHandler for 404 for consistent JSON.
+app.js
++1
+const { errorHandler } = require('./middleware/errorHandler');
+const { errorHandler } = require('./middleware/errorHandler');const { NotFoundError } = require('./utils/errors');
+app.js
++3
+-3
+// 404app.use((req, res) => {  res.status(404).json({ success: false, message: 'Route not found' });
+// 404app.use((req, res) => {  res.status(404).json({ success: false, message: 'Route not found' });// 404 - pass to error handler for consistent JSONapp.use((req, res, next) => {
+Installing dependencies and verifying the backend runs:
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend" && npm install
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend"; npm install
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+Checking backend structure and adding a basic API test:
+jest.config.js
++9
+module.exports = {  testEnvironment: 'node',  testMatch: ['**/__tests__/**/*.test.js', '**/*.test.js'],  coverageDirectory: 'coverage',  collectCoverageFrom: ['src/**/*.js', '!src/server.js'],
+health.test.js
++12
+const request = require('supertest');const app = require('../src/app');describe('Health API', () => {  it('GET /health returns 200 and OK', async () => {
+auth.test.js
++62
+const mongoose = require('mongoose');const request = require('supertest');const app = require('../src/app');const { User } = require('../src/models');
+Preventing app from connecting to the DB when running tests: app.js doesn't call connectDB() (only server.js does), so test files that require app won't auto-connect. Verifying route path: seats are under showtimes, so GET seats is /api/showtimes/:showtimeId/seats. Bookings lock/confirm are under /api/bookings. Summary:
+Summary of what’s in place for the backend:
+Backend layout
+backend/├── src/│   ├── app.js              # Express app, CORS, routes, 404, errorHandler│   ├── server.js           # connectDB + listen│   ├── config/db.js        # MongoDB connection│   ├── models/             # User, Movie, Showtime, Seat, Booking, Payment│   ├── middleware/         # auth, requireRole, validate, errorHandler│   ├── services/           # authService, movieService, showtimeService, bookingService│   ├── controllers/       # auth, movie, showtime, booking│   ├── routes/             # authRoutes, movieRoutes, showtimeRoutes, bookingRoutes│   └── utils/              # errors, constants├── scripts/seedAdmin.js    # Create admin user (admin@example.com / admin123)├── __tests__/              # health.test.js, auth.test.js├── Dockerfile├── jest.config.js├── package.json└── .env.example
+API overview
+Method	Path	Auth	Description
+Auth			
+POST	/api/auth/register	No	Register (body: email, password, name)
+POST	/api/auth/login	No	Login (body: email, password)
+GET	/api/auth/me	JWT	Current user profile
+Movies			
+GET	/api/movies	No	List movies (?active=false for all)
+GET	/api/movies/:id	No	Movie by ID
+POST	/api/movies	Admin	Create movie
+PUT	/api/movies/:id	Admin	Update movie
+DELETE	/api/movies/:id	Admin	Delete movie
+Showtimes			
+GET	/api/showtimes/movie/:movieId	No	Showtimes for movie
+GET	/api/showtimes/:id	No	Showtime by ID
+GET	/api/showtimes/:showtimeId/seats	No	Seat map (releases expired locks first)
+POST	/api/showtimes	Admin	Create showtime (creates default seats A–E × 10)
+PUT	/api/showtimes/:id	Admin	Update showtime
+DELETE	/api/showtimes/:id	Admin	Delete showtime
+Bookings			
+POST	/api/bookings/lock	JWT	Lock seats (body: showtimeId, seatIds[])
+POST	/api/bookings/release	JWT	Release lock (body: showtimeId, seatIds[])
+POST	/api/bookings/confirm	JWT	Confirm booking (body: showtimeId, seatIds[], totalAmount?)
+GET	/api/bookings/my	JWT	Current user’s bookings
+GET	/api/bookings/:bookingId	JWT	Booking by ID (owner or admin)
+Behaviour
+Auth: JWT in Authorization: Bearer <token>, bcrypt for passwords, roles user and admin.
+Seat locking: Statuses available → locked → booked. Lock timeout 5 minutes; expired locks are released when fetching seats or locking/confirming. Atomic updates to avoid double booking.
+Showtime creation: Creates a default seat map (rows A–E, 10 seats per row).
+Validation: express-validator on auth, movies, showtimes, bookings.
+Admin: Create an admin with npm run seed:admin (default: admin@example.com / admin123).
+How to run
+Copy .env.example to .env and set MONGODB_URI, JWT_SECRET, etc.
+Start MongoDB, then:
+npm install
+npm run dev (or npm start)
+npm run seed:admin to create an admin user
+npm test to run Jest (uses MONGODB_URI or mongodb://localhost:27017/movie-booking-test).
+If you want, next step can be the frontend (React pages, Axios services, auth context) or Docker/CI/CD wiring.
+Now generate frontend (React pages, Axios services, auth context)
+
+Creating the React frontend: auth context, Axios services, and pages (Login, Register, Movie List, Movie Detail + Showtimes, Seat Selection, Booking Confirmation, My Bookings).
+package.json
++22
+{  "name": "movie-ticket-booking-frontend",  "private": true,  "version": "1.0.0",  "type": "module",
+vite.config.js
++20
+import { defineConfig } from 'vite';import react from '@vitejs/plugin-react';export default defineConfig({  plugins: [react()],
+index.html
++13
+<!DOCTYPE html><html lang="en">  <head>    <meta charset="UTF-8" />    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+main.jsx
++17
+import React from 'react';import ReactDOM from 'react-dom/client';import { BrowserRouter } from 'react-router-dom';import { AuthProvider } from './context/AuthContext';import App from './App';
+index.css
++108
+* {  box-sizing: border-box;}body {
+api.js
++33
+import axios from 'axios';const baseURL = import.meta.env.VITE_API_URL || '';export const api = axios.create({
+authService.js
++13
+import { api } from './api';export const authService = {  register: (data) =>    api.post('/api/auth/register', data).then((res) => res.data),
+movieService.js
++10
+import { api } from './api';export const movieService = {  getAll: (params = {}) =>    api.get('/api/movies', { params }).then((res) => res.data),
+showtimeService.js
++13
+import { api } from './api';export const showtimeService = {  getByMovieId: (movieId) =>    api.get(`/api/showtimes/movie/${movieId}`).then((res) => res.data),
+bookingService.js
++19
+import { api } from './api';export const bookingService = {  lockSeats: (showtimeId, seatIds) =>    api.post('/api/bookings/lock', { showtimeId, seatIds }).then((res) => res.data),
+AuthContext.jsx
++92
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';import { authService } from '../services/authService';const AuthContext = createContext(null);
+useAuth.js
++2
+export { useAuth } from '../context/AuthContext';
+Navbar.jsx
++41
+import { Link, useNavigate } from 'react-router-dom';import { useAuth } from '../hooks/useAuth';import './Navbar.css';export default function Navbar() {
+Navbar.css
++63
+.navbar {  background: #1e293b;  color: white;  padding: 0.75rem 0;  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+PrivateRoute.jsx
++22
+import { Navigate, useLocation } from 'react-router-dom';import { useAuth } from '../hooks/useAuth';export default function PrivateRoute({ children }) {  const { isAuthenticated, loading } = useAuth();
+SeatMap.jsx
++68
+import './SeatMap.css';const SEAT_STATUS = {  available: 'available',  locked: 'locked',
+SeatMap.css
++122
+.seat-map {  padding: 1rem;  background: #f8fafc;  border-radius: 8px;  max-width: 500px;
+Creating pages: Login, Register, Home (Movie List), MovieDetail, SeatSelection, BookingConfirmation, MyBookings.
+Login.jsx
++69
+import { useState } from 'react';import { Link, useNavigate, useLocation } from 'react-router-dom';import { useAuth } from '../hooks/useAuth';import './Auth.css';
+Register.jsx
++80
+import { useState } from 'react';import { Link, useNavigate } from 'react-router-dom';import { useAuth } from '../hooks/useAuth';import './Auth.css';
+Auth.css
++32
+.auth-page {  min-height: calc(100vh - 120px);  display: flex;  align-items: center;  justify-content: center;
+MovieList.jsx
++62
+import { useState, useEffect } from 'react';import { Link } from 'react-router-dom';import { movieService } from '../services/movieService';import './MovieList.css';
+MovieList.css
++58
+.movie-list-page h1 {  margin-bottom: 1.5rem;  font-size: 1.5rem;}
+MovieDetail.jsx
++95
+import { useState, useEffect } from 'react';import { useParams, Link } from 'react-router-dom';import { movieService } from '../services/movieService';import { showtimeService } from '../services/showtimeService';import './MovieDetail.css';
+MovieDetail.css
++93
+.back-link {  display: inline-block;  margin-bottom: 1rem;  font-size: 0.875rem;}
+SeatSelection.jsx
++170
+import { useState, useEffect } from 'react';import { useParams, useLocation, useNavigate } from 'react-router-dom';import { showtimeService } from '../services/showtimeService';import { bookingService } from '../services/bookingService';import SeatMap from '../components/SeatMap';
+SeatSelection.css
++40
+.seat-selection-page h1 {  margin-bottom: 0.5rem;  font-size: 1.5rem;}
+BookingConfirmation.jsx
++89
+import { useState, useEffect } from 'react';import { useLocation, useNavigate } from 'react-router-dom';import { bookingService } from '../services/bookingService';import './BookingConfirmation.css';
+BookingConfirmation.css
++46
+.confirmation-page h1 {  margin-bottom: 1rem;  font-size: 1.5rem;}
+MyBookings.jsx
++76
+import { useState, useEffect } from 'react';import { Link } from 'react-router-dom';import { bookingService } from '../services/bookingService';import './MyBookings.css';
+MyBookings.css
++58
+.my-bookings-page h1 {  margin-bottom: 1.5rem;  font-size: 1.5rem;}
+Creating App.jsx with routes and fixing main.jsx (AuthProvider is already in main.jsx).
+App.jsx
++54
+import { Routes, Route, Navigate } from 'react-router-dom';import Navbar from './components/Navbar';import PrivateRoute from './components/PrivateRoute';import Login from './pages/Login';import Register from './pages/Register';
+Adding frontend .env.example and .gitignore, and fixing main.jsx so AuthProvider wraps App inside BrowserRouter.
+.env.example
++4
+# API base URL (leave empty when using Vite proxy in dev)# In production, set to your backend URL, e.g. https://api.example.comVITE_API_URL=
+.gitignore
++7
+node_modules/dist/.env.env.local*.log
+BookingConfirmation.jsx
++2
+-1
+    try {      const res = await bookingService.confirmBooking(showtimeId, seatIds);      setBooking(res.data);
+      const res = await bookingService.confirmBooking(showtimeId, seatIds);    try {      const totalAmount = seats.length * 200;    const res = await bookingService.confirmBooking(showtimeId, seatIds, totalAmount);      setBooking(res.data);
+BookingConfirmation.jsx
++1
+-1
+      const totalAmount = seats.length * 200;    const res = await bookingService.confirmBooking(showtimeId, seatIds, totalAmount);      setBooking(res.data);
+    const res = await bookingService.confirmBooking(showtimeId, seatIds, totalAmount);      const totalAmount = seats.length * 200;      const res = await bookingService.confirmBooking(showtimeId, seatIds, totalAmount);      setBooking(res.data);
+Summary of the frontend that’s in place:
+Frontend structure
+frontend/├── index.html├── vite.config.js          # Proxy /api and /health to backend├── package.json├── .env.example            # VITE_API_URL (optional)├── .gitignore└── src/    ├── main.jsx            # BrowserRouter, AuthProvider, App    ├── App.jsx             # Navbar + Routes    ├── index.css           # Global styles, .btn, .card, .form-group    ├── context/    │   └── AuthContext.jsx # user, token, login, register, logout, loadUser    ├── hooks/    │   └── useAuth.js      # Re-export useAuth    ├── services/    │   ├── api.js          # Axios instance + auth header + 401 logout    │   ├── authService.js  # register, login, getMe    │   ├── movieService.js # getAll, getById    │   ├── showtimeService.js # getByMovieId, getById, getSeats    │   └── bookingService.js  # lockSeats, releaseLock, confirmBooking, getMyBookings, getById    ├── components/    │   ├── Navbar.jsx      # Links: Movies, My Bookings, Login/Register or user name + Logout    │   ├── Navbar.css    │   ├── PrivateRoute.jsx # Redirect to /login if not authenticated    │   ├── SeatMap.jsx     # Rows A–E, click to select; available/locked/booked/selected    │   └── SeatMap.css    └── pages/        ├── Login.jsx       # Email/password, redirect after login        ├── Register.jsx    # Name, email, password        ├── Auth.css        ├── MovieList.jsx   # Grid of movies, link to /movies/:id        ├── MovieList.css        ├── MovieDetail.jsx # Poster, info, list of showtimes → /showtimes/:id/seats        ├── MovieDetail.css        ├── SeatSelection.jsx # Seat map, lock seats, then “Confirm Booking” → /booking/confirm        ├── SeatSelection.css        ├── BookingConfirmation.jsx # Summary, “Pay & Confirm”, then success + booking ID        ├── BookingConfirmation.css        ├── MyBookings.jsx  # List of user’s bookings        └── MyBookings.css
+Behaviour
+Auth context: Holds user, token, login, register, logout, isAuthenticated, loading. Token and user are stored in localStorage; api.js adds Authorization: Bearer <token> and on 401 clears storage and dispatches auth-logout.
+Routes:
+Public: /, /login, /register, /movies/:id.
+Protected (must be logged in): /showtimes/:showtimeId/seats, /booking/confirm, /my-bookings.
+PrivateRoute redirects unauthenticated users to /login and saves location.state.from for redirect after login.
+Flow: Movies → Movie detail + showtimes → Seat selection (lock seats) → Booking confirm (pay & confirm) → Success with booking ID → My Bookings.
+Seat map: Rows A–E, 10 seats per row; available (green), selected (blue), locked (yellow), booked (grey). Lock is 5 minutes; user locks then confirms.
+How to run
+Backend: cd backend && npm install && npm run dev (and MongoDB).
+Frontend: cd frontend && npm install && npm run dev (Vite proxy to backend on port 5000).
+Open http://localhost:3000; register or login, then browse movies and complete a booking.
+If you want, next step can be Docker + CI/CD or README / test-report.
+Now generate Docker & CI/CD
+
+Adding Docker and CI/CD: checking the backend Dockerfile and frontend setup, then adding a frontend Dockerfile, docker-compose, and a GitHub Actions workflow.
+.dockerignore
++14
+node_modulesnpm-debug.log.env.env.*.git
+Dockerfile
++35
+# Stage 1: BuildFROM node:20-alpine AS builderWORKDIR /app
+Using a simpler nginx config file so the frontend container can proxy to the backend in docker-compose:
+nginx.conf
++25
+server {    listen 80;    root /usr/share/nginx/html;    index index.html;
+Dockerfile
++1
+-10
+COPY --from=builder /app/dist /usr/share/nginx/html# SPA: serve index.html for client-side routesRUN echo 'server { \  listen 80; \  root /usr/share/nginx/html; \
+# SPA: serve index.html for client-side routesRUN echo 'server { \  listen 80; \  root /usr/share/nginx/html; \  index index.html; \  location / { try_files $uri $uri/ /index.html; } \  location /health { proxy_pass http://backend:5000; proxy_http_version 1.1; proxy_set_header Host $host; } \  location /api { proxy_pass http://backend:5000; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; } \  }' > /etc/nginx/conf.d/default.confCOPY --from=builder /app/dist /usr/share/nginx/html
+docker-compose.yml
++48
+# Full stack: backend, frontend, MongoDB# Usage: docker-compose up -d# Frontend: http://localhost:3000  |  Backend API: http://localhost:5000 (via frontend proxy or direct)services:
+.dockerignore
++10
+node_modulesdist.env.env.*.git
+Creating the GitHub Actions CI/CD workflow:
+ci-cd.yml
++136
+# CI/CD: Build → Test → Dockerize → Push to Docker Hub# Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN# Optional: RENDER_DEPLOY_HOOK_URL (for Render deploy hook)name: CI/CD Pipeline
+Making the workflow work when package-lock.json is missing (using npm install as fallback):
+ci-cd.yml
++1
+-3
+          node-version: '20'          cache: 'npm'          cache-dependency-path: backend/package-lock.json        working-directory: ./backend
+          cache: 'npm'          cache-dependency-path: backend/package-lock.json          node-version: '20'        working-directory: ./backend
+ci-cd.yml
++1
+-3
+          node-version: '20'          cache: 'npm'          cache-dependency-path: frontend/package-lock.json        working-directory: ./frontend
+          cache: 'npm'          cache-dependency-path: frontend/package-lock.json          node-version: '20'        working-directory: ./frontend
+Updating the backend Dockerfile to work without a lock file:
+Dockerfile
++1
+-1
+COPY package*.json ./RUN npm ci --only=production
+RUN npm ci --only=productionCOPY package*.json ./RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+Dockerfile
++1
+-1
+COPY package*.json ./RUN npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+RUN npm ci --omit=dev 2>/dev/null || npm install --omit=devCOPY package*.json ./RUN npm ci --only=production 2>/dev/null || npm install --omit=dev
+Adding Render deployment config and deployment docs.
+render.yaml
++34
+# Render Blueprint: deploy backend + frontend (static)# MongoDB: use Render MongoDB add-on or external (e.g. MongoDB Atlas). Set MONGODB_URI in backend env.# After connecting repo, add secrets in Dashboard: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (if using Docker images from Hub).services:
+DEPLOYMENT.md
++91
+# Deployment Guide## Docker (local or server)### Run full stack with Docker Compose
+.gitignore
++22
+# Env and secrets.env.env.local.env.*.local
+DEPLOYMENT.md
++2
+-2
+1. **Backend:** New Web Service → Docker → connect repo, Dockerfile path `backend/Dockerfile`, root `backend`. Add env: `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`.2. **Frontend:** New Static Site → build command `npm run build`, publish directory `dist`. Set env `VITE_API_URL` to backend URL.     Or use Docker: New Web Service → Dockerfile `frontend/Dockerfile` (frontend container proxies `/api` to backend; then set backend URL in nginx or env).3. **Database:** Use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and set `MONGODB_URI` in backend.
+2. **Frontend:** New Static Site → build command `npm run build`, publish directory `dist`. Set env `VITE_API_URL` to backend URL.     Or use Docker: New Web Service → Dockerfile `frontend/Dockerfile` (frontend container proxies `/api` to backend; then set backend URL in nginx or env).1. **Backend:** New Web Service → Docker → connect repo, Dockerfile path `backend/Dockerfile`, root `backend`. Add env: `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`.2. **Frontend:** **Recommended:** New Static Site → build command `npm run build`, publish directory `dist`. Set env `VITE_API_URL` to your backend URL (e.g. `https://movie-booking-backend.onrender.com`).     The repo’s frontend Docker image is intended for **docker-compose** (nginx proxies `/api` to service name `backend`). On Render, services are separate, so use Static Site with `VITE_API_URL`, or build the frontend image with build arg `VITE_API_URL=<backend URL>` and deploy that image.3. **Database:** Use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) and set `MONGODB_URI` in backend.
+Summary of what’s in place for Docker and CI/CD:
+1. Docker
+Backend (backend/Dockerfile)
+Image: node:20-alpine
+Install: npm ci --only=production (falls back to npm install --omit=dev if there’s no lockfile)
+Run: node src/server.js on port 5000
+Ignore: .dockerignore (node_modules, tests, .env, etc.)
+Frontend (frontend/Dockerfile)
+Stage 1: Node 20 – npm ci, npm run build (optional VITE_API_URL build arg)
+Stage 2: nginx:alpine – serves dist, uses nginx.conf
+nginx: SPA fallback (try_files → index.html), proxies /api and /health to http://backend:5000 (for use in docker-compose)
+Ignore: .dockerignore (node_modules, dist, .env)
+docker-compose.yml (repo root)
+Services: mongodb, backend, frontend
+mongodb: mongo:7, port 27017, volume mongodb_data
+backend: build from ./backend, port 5000, env: MONGODB_URI, JWT_SECRET, CORS_ORIGIN
+frontend: build from ./frontend, port 3000 → 80 (nginx)
+Flow: backend depends on mongodb; frontend depends on backend; browser uses http://localhost:3000 and nginx proxies /api to backend
+Run:
+docker-compose up -d# Frontend: http://localhost:3000  |  API: http://localhost:3000/api (proxied)
+2. CI/CD (GitHub Actions)
+Workflow: .github/workflows/ci-cd.yml
+Step	When	What
+test-backend	Every push/PR	Checkout → Node 20 → MongoDB service → npm ci \|\| npm install → npm test
+build-frontend	Every push/PR	Checkout → Node 20 → npm ci \|\| npm install → npm run build
+docker-build-push	Push to main or master only (after tests pass)	Login to Docker Hub → Build and push DOCKERHUB_USERNAME/movie-booking-backend and DOCKERHUB_USERNAME/movie-booking-frontend (tags: latest + git SHA)
+Trigger Render deploy	After push (optional)	curl to RENDER_DEPLOY_HOOK_URL if the secret is set
+Secrets (GitHub repo → Settings → Secrets and variables → Actions):
+Required for push to Docker Hub: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+Optional: RENDER_DEPLOY_HOOK_URL (Render deploy hook URL)
+3. Deployment
+render.yaml – Render Blueprint: backend and frontend as Web Services (Docker). You must set MONGODB_URI, CORS_ORIGIN, and (for frontend) VITE_API_URL in the Render dashboard.
+docs/DEPLOYMENT.md – Steps for:
+Docker Compose (local/server)
+GitHub Actions (secrets, Docker Hub, optional Render hook)
+Render (Blueprint, manual Web/Static, MongoDB Atlas)
+Using images from Docker Hub and deploying elsewhere (e.g. AWS/GCP/Azure)
+4. Root .gitignore
+Ignores .env, .env.local, OS/IDE files, logs, and docker-compose.override.yml.
+5. Quick reference
+Item	Path
+Backend Dockerfile	backend/Dockerfile
+Frontend Dockerfile	frontend/Dockerfile
+Frontend nginx config	frontend/nginx.conf
+Compose file	docker-compose.yml
+CI/CD workflow	.github/workflows/ci-cd.yml
+Render Blueprint	render.yaml
+Deployment guide	docs/DEPLOYMENT.md
+After adding DOCKERHUB_USERNAME and DOCKERHUB_TOKEN in GitHub, pushes to main/master will run tests, build both images, and push them to Docker Hub. Optionally set RENDER_DEPLOY_HOOK_URL to trigger a Render deploy after each push.
+node (19-112)
+ 
+
+Reinstalling dependencies to restore the missing transitive dependency depd (required by Express/body-parser).
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend" && Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue; npm install
+The token '&&' is not a valid statement separator in this version.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : InvalidEndOfLine
+ 
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend"; if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }; npm install
+    + CategoryInfo          : PermissionDenied: (gatherSequenceExpressions.js:FileInfo) [Remove-Item], UnauthorizedAcc 
+   essException
+    + FullyQualifiedErrorId : RemoveFileSystemItemUnAuthorizedAccess,Microsoft.PowerShell.Commands.RemoveItemCommand
+Remove-Item : Cannot remove item D:\Users\Documents\Projects\MovieTicketBookingSystem\backend\node_modules\@jest\core\n
+backend error check
+
+Running a clean reinstall of backend dependencies (PowerShell-compatible):
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend"; if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }; npm install
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn tar TAR_ENTRY_ERROR UNKNOWN: unknown error, open 'D:\Users\Documents\Projects\MovieTicketBookingSystem\backend\node_modules\merge-stream\package.json'
+npm warn deprecated superagent@8.1.2: Please upgrade to superagent v10.2.2+, see release notes at https://github.com/forwardemail/superagent/releases/tag/v10.2.2 - maintenance is supported by Forward Email @ https://forwardemail.net
+Verifying the backend starts after the reinstall:
+cd "d:\Users\Documents\Projects\MovieTicketBookingSystem\backend"; node -e "require('express'); console.log('Express (depd) OK');"
++                ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Get-ChildItem], ArgumentException
+    + FullyQualifiedErrorId : System.ArgumentException,Microsoft.PowerShell.Commands.GetChildItemCommand
+ 
+Backend dependencies were reinstalled successfully. The quick check shows Express (and its depd dependency) load correctly.
+What was done
+Removed the existing node_modules folder in backend
+Ran npm install again so all dependencies (including depd) are installed
+What you should do
+Stop the current dev server if it’s still running (Ctrl+C in the terminal).
+Start it again from the backend folder:
+   cd backend   npm run dev
+Or: npm start
+If MongoDB is not running, the app will fail at startup when it tries to connect. In that case either:
+Start MongoDB locally, or
+Point the app to a MongoDB instance by setting MONGODB_URI in a .env file (see backend/.env.example).
+The “Cannot find module 'depd'” error should be gone after this clean reinstall.
+i am using mongodb atlas
+
+Using MongoDB Atlas: set your Atlas connection string in the backend .env. Checking the backend config for the expected variable:
+.env.example
++3
+-1
+# MongoDBMONGODB_URI=mongodb://localhost:27017/movie-booking
+# MongoDB# MongoDB (local or Atlas)# Local: mongodb://localhost:27017/movie-booking# Atlas: mongodb+srv://<user>:<password>@<cluster>.mongodb.net/movie-booking?retryWrites=true&w=majorityMONGODB_URI=mongodb://localhost:27017/movie-booking
+Here’s what you need for MongoDB Atlas with this backend:
+1. Set MONGODB_URI in .env
+In backend/.env, set:
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/movie-booking?retryWrites=true&w=majority
+Replace <username> and <password> with your Atlas database user.
+Replace <cluster> with your cluster host (e.g. cluster0.xxxxx.mongodb.net).
+Use movie-booking as the database name (or change it if you prefer).
+If the password has special characters (@, #, :, etc.), URL-encode them (e.g. @ → %40).
+You can copy the connection string from Atlas: Database → Connect → Connect your application → Node.js driver and paste it into .env as MONGODB_URI=....
+2. Atlas setup checklist
+Item	Where
+Database user	Atlas → Database Access → Create user (username + password).
+Network access	Atlas → Network Access → Add IP Address. Use 0.0.0.0/0 to allow from anywhere (or your server’s IP for production).
+Connection string	Atlas → Database → Connect → “Drivers” → copy the URI.
+3. Restart the backend
+After saving .env:
+cd backendnpm run dev
+You should see something like: MongoDB connected: cluster0-shard-00-00.xxxxx.mongodb.net.
+The backend already reads process.env.MONGODB_URI in src/config/db.js, so no code changes are required; only the .env value for Atlas.
+currently no movies available can u give me a code where i can upload movies according to the structure u did
+
+Adding a seed script to insert sample movies and an admin page so we can add movies via the UI.
+seedMovies.js
++95
+/** * Seed movies into the database. * Usage: node scripts/seedMovies.js * Optional: node scripts/seedMovies.js path/to/movies.json *
+movies.example.json
++12
+[  {    "title": "Sample Movie",    "genre": "Drama",    "duration": 120,
+Adding an admin movies page and a create-movie API call in the frontend.
+movieService.js
++3
+    api.get(`/api/movies/${id}`).then((res) => res.data),};
+    api.get(`/api/movies/${id}`).then((res) => res.data),  create: (data) =>    api.post('/api/movies', data).then((res) => res.data),};
+AdminMovies.jsx
++148
+import { useState, useEffect } from 'react';import { useNavigate } from 'react-router-dom';import { useAuth } from '../hooks/useAuth';import { movieService } from '../services/movieService';import './AdminMovies.css';
+AdminMovies.css
++74
+.admin-movies-page h1 {  margin-bottom: 0.5rem;  font-size: 1.5rem;}
+Navbar.jsx
++1
+              <Link to="/my-bookings">My Bookings</Link>              <span className="navbar-user">{user?.name}</span>
+              <Link to="/my-bookings">My Bookings</Link>              {user?.role === 'admin' && <Link to="/admin/movies">Add Movies</Link>}              <span className="navbar-user">{user?.name}</span>
+App.jsx
++1
+import MyBookings from './pages/MyBookings';
+import MyBookings from './pages/MyBookings';import AdminMovies from './pages/AdminMovies';
+App.jsx
++8
+          />
+          />          <Route            path="/admin/movies"            element={              <PrivateRoute>                <AdminMovies />
+Checking backend movie list API for the correct query param:
+AdminMovies.jsx
++1
+-1
+    movieService      .getAll({ activeOnly: false })      .then((res) => setMovies(res.data || []))
+      .getAll({ activeOnly: false })    movieService      .getAll({ active: 'false' })      .then((res) => setMovies(res.data || []))
+AdminMovies.jsx
++1
+-1
+      setForm(initialForm);      const res = await movieService.getAll({ activeOnly: false });      setMovies(res.data || []);
+      const res = await movieService.getAll({ activeOnly: false });      setForm(initialForm);      const res = await movieService.getAll({ active: 'false' });      setMovies(res.data || []);
+Adding the seed script to package.json:
+package.json
++2
+-1
+    "test": "jest --coverage --forceExit",    "seed:admin": "node scripts/seedAdmin.js"  },
+    "seed:admin": "node scripts/seedAdmin.js"    "test": "jest --coverage --forceExit",    "seed:admin": "node scripts/seedAdmin.js",    "seed:movies": "node scripts/seedMovies.js"  },
+Summary of what’s in place:
+1. Seed script (backend) – bulk load movies
+Run from project root:
+cd backendnpm run seed:movies
+This inserts 5 sample movies (The Dark Knight, Inception, Dangal, Interstellar, 3 Idiots) with the same structure as your Movie model.
+Load from your own JSON file:
+npm run seed:movies -- path/to/movies.json
+JSON format (same as your Movie schema):
+[  {    "title": "Movie Title",    "genre": "Action, Drama",    "duration": 120,    "language": "English",    "description": "Optional description.",    "poster": "https://example.com/poster.jpg",    "isActive": true  }]
+Example file: backend/scripts/movies.example.json.
+2. Admin “Add Movie” page (frontend) – add one by one
+Route: /admin/movies (only for logged-in admin users).
+Navbar: “Add Movies” link appears only when user.role === 'admin'.
+Form fields: Title , Genre , Duration (minutes) , Language , Description (optional), Poster URL (optional).
+Behaviour: Submit calls POST /api/movies; on success the list below refreshes.
+To use it:
+Create an admin user (if you don’t have one):
+   cd backend   npm run seed:admin
+Default: admin@example.com / admin123.
+Log in on the frontend with that admin account.
+Open “Add Movies” in the navbar or go to /admin/movies and add movies with the form.
+3. Movie structure (matches your backend)
+Field	Type	Required	Notes
+title	string	yes	
+genre	string	yes	e.g. "Action, Drama"
+duration	number	yes	Minutes
+language	string	yes	e.g. "English", "Hindi"
+description	string	no	Optional
+poster	string	no	URL or leave empty
+isActive	boolean	no	Default true
+You can either run npm run seed:movies (and optionally your own JSON) or use the Admin “Add Movies” page after logging in as admin.
+nicee now the showtime is no showtime available i want like 3 to 4 screens per movie 
+
+Adding a seed script that creates 3–4 showtimes (screens) per movie and ensures each showtime gets a seat map.
+seedShowtimes.js
++102
+/** * Seed showtimes (3–4 screens per movie) with seat maps. * Run after seed:movies. Usage: node scripts/seedShowtimes.js */require('dotenv').config();
+package.json
++2
+-1
+    "seed:admin": "node scripts/seedAdmin.js",    "seed:movies": "node scripts/seedMovies.js"  },
+    "seed:movies": "node scripts/seedMovies.js"    "seed:admin": "node scripts/seedAdmin.js",    "seed:movies": "node scripts/seedMovies.js",    "seed:showtimes": "node scripts/seedShowtimes.js"  },
+Here’s what was added:
+Showtime seed script
+File: backend/scripts/seedShowtimes.js
+What it does:
+Loads all movies from the DB.
+For each movie, creates 4 showtimes (4 “screens” per movie):
+PVR Cinemas – Screen 1
+PVR Cinemas – Screen 2
+INOX – Screen 1
+Cinepolis – Screen 1
+Each showtime uses different dates (today, tomorrow, day after) and times (10:00, 13:30, 17:00, 21:00).
+For every showtime it creates the seat map (rows A–E, 10 seats per row).
+Skips showtimes that already exist (same movie + theatre + screen + date + time).
+How to run:
+cd backendnpm run seed:showtimes
+Order: Run after movies exist. If you haven’t seeded movies yet:
+npm run seed:moviesnpm run seed:showtimes
+After that, each movie will have 3–4 showtimes on the movie detail page, and each showtime will have a seat map for booking.
+i need some changes in ui and working check the image for reference.
+
+
+
+changes:
+
+1. the screens should be present sorted by day (example todays screens must be shows in todays date, and next shows like tommorow on seperate segment refer the image provided for example)
+
+2. and i need a option to select number of seats and auto select that number of seats when we click the seats. it needs to come next to next to the right 
+
+3. remove that lock option in seat booking and give the lock option directly when the user tries to go to the payment gateway
+
+4. and in the seat selection section the selected seats is highlighted fully in blue i want only the box in blue not the whole box and text  
+
+Implementing the four changes: checking the current components.
+Showtimes sorted by day (Today, Tomorrow, segments)
+Number of seats selector + auto-select on click
+Remove lock step; lock only at Proceed to payment
+Selected seat: blue border only, not full fill
+MovieDetail.jsx
++52
+-20
+import { useState, useEffect } from 'react';import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';import { useState, useEffect, useMemo } from 'react';import { useParams, Link } from 'react-router-dom';function getDateKey(d) {  const date = new Date(d);
+MovieDetail.css
++22
+.showtimes-by-day {  display: flex;  flex-direction: column;  gap: 1.5rem;}
+SeatSelection.jsx
++88
+-89
+import { useState, useEffect } from 'react';import { useParams, useLocation, useNavigate } from 'react-router-dom';const LOCK_TIMEOUT_MIN = 5;
+import { useState, useEffect } from 'react';const LOCK_TIMEOUT_MIN = 5;import { useState, useEffect, useMemo } from 'react';import { useParams, useLocation, useNavigate } from 'react-router-dom';
+SeatSelection.css
++61
+-14
+.seat-actions {  margin-top: 1.5rem;  padding: 1rem;  background: white;  border-radius: 8px;
+.seat-actions {  margin-top: 1.5rem;  padding: 1rem;  background: white;  border-radius: 8px;  max-width: 500px;  margin-left: auto;  margin-right: auto;
+SeatMap.css
++3
+-3
+.seat-selected {  background: #2563eb;  border-color: #1d4ed8;  color: white;
+  background: #2563eb;  border-color: #1d4ed8;  color: white;.seat-selected {  background: #fff;  border: 2px solid #2563eb;
+SeatMap.css
++2
+-2
+.legend-item.seat-selected::before {  background: #2563eb;  border-color: #1d4ed8;}
+  background: #2563eb;  border-color: #1d4ed8;.legend-item.seat-selected::before {  background: #fff;  border: 2px solid #2563eb;}
+Fixing auto-select logic so we pick N consecutive available seats that include the clicked seat.
+SeatSelection.jsx
++9
+-11
+    if (!rowSeats) return [clickedSeat._id];    const available = rowSeats.filter((s) => s.status === 'available');    const idx = rowSeats.findIndex((s) => s._id === clickedSeat._id);    if (idx === -1 || rowSeats[idx].status === 'booked') return [];    const n = Math.min(seatCount, available.length);    if (n <= 0) return [];
+    const available = rowSeats.filter((s) => s.status === 'available');    const n = Math.min(seatCount, available.length);    if (n <= 0) return [];    const clickedNum = clickedSeat.number;    const numsInRow = rowSeats.map((s) => s.number);    let start = numsInRow.indexOf(clickedNum);    if (start === -1) return [clickedSeat._id];    let end = start + n - 1;    if (end >= rowSeats.length) {      end = rowSeats.length - 1;      start = Math.max(0, end - n + 1);    if (!rowSeats) return [clickedSeat._id];    const idx = rowSeats.findIndex((s) => s._id === clickedSeat._id);    if (idx === -1 || rowSeats[idx].status === 'booked') return [];
+Limiting selection to exactly N consecutive seats including the clicked seat.
+SeatSelection.jsx
++16
+-13
+    const n = Math.max(1, Math.min(seatCount, rowSeats.length));    let start = idx;    let end = idx;    while (end - start + 1 < n) {      const canExtendRight = end + 1 < rowSeats.length && rowSeats[end + 1].status === 'available';      const canExtendLeft = start - 1 >= 0 && rowSeats[start - 1].status === 'available';
+    let start = idx;    let end = idx;    while (end - start + 1 < n) {      const canExtendRight = end + 1 < rowSeats.length && rowSeats[end + 1].status === 'available';      const canExtendLeft = start - 1 >= 0 && rowSeats[start - 1].status === 'available';      if (canExtendRight) end++;      else if (canExtendLeft) start--;      else break;    }    const slice = rowSeats.slice(start, end + 1);    const allAvailable = slice.every((s) => s.status === 'available');    if (!allAvailable) return [clickedSeat._id];    return slice.map((s) => s._id);    const n = Math.max(1, Math.min(seatCount, rowSeats.length));
+Summary of the four changes:
+1. Showtimes sorted by day
+Movie detail page: Showtimes are grouped by date.
+Each group has a heading: "Today", "Tomorrow", or "Wed, 05 Feb" (weekday + date).
+Groups are ordered by date; under each heading you see theatre • screen and time for that day only.
+2. Number of seats + auto-select
+Seat selection page: A "How many seats?" block is on the right of the seat map.
+Numbers 1–10 are clickable; the chosen count is highlighted.
+When you click a seat, that many consecutive seats in the same row are selected automatically (including the clicked seat), when possible:
+First tries N seats to the right (including clicked).
+If that’s not possible, tries N seats to the left (including clicked).
+If neither works, only the clicked seat is selected.
+"X seat(s) selected" and "Proceed to payment" are in the same right-hand block.
+3. Lock only at payment
+The separate "Lock seats" and "Release" steps are removed.
+Flow is: Select seats → Proceed to payment.
+"Proceed to payment" calls the lock API and then goes to the booking confirmation (payment) page. Lock happens only at this step.
+4. Selected seat: blue border only
+Selected seats no longer use a solid blue fill.
+They now have a white background, blue border (2px), and default text color (not white).
+Legend for "Selected" is updated to match (outline only).
+Files touched
+frontend/src/pages/MovieDetail.jsx – group showtimes by day and label (Today / Tomorrow / date).
+frontend/src/pages/MovieDetail.css – styles for day groups.
+frontend/src/pages/SeatSelection.jsx – seat count 1–10, auto-select N consecutive seats, single "Proceed to payment" (lock on that action).
+frontend/src/pages/SeatSelection.css – layout for seat map + right-hand options.
+frontend/src/components/SeatMap.css – selected seat: border only, no fill.

@@ -1,0 +1,176 @@
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.movie-detail-header {
+  display: flex;
+  gap: 2rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.movie-detail-left {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.movie-detail-poster {
+  flex-shrink: 0;
+  width: 200px;
+}
+
+.movie-detail-trailer {
+  flex-shrink: 0;
+  width: 320px;
+  min-height: 180px;
+}
+
+.trailer-embed-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0f0f0f;
+}
+
+.trailer-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.trailer-placeholder {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.movie-detail-poster img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.poster-placeholder {
+  width: 100%;
+  aspect-ratio: 2/3;
+  background: #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.movie-detail-info h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.movie-detail-info .movie-meta {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.movie-description {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.btn-book-tickets {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-book-tickets:hover {
+  background: #b91c1c;
+}
+
+.showtimes-section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.showtimes-by-day {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.showtime-day-group {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 1rem;
+}
+
+.showtime-day-group:last-child {
+  border-bottom: none;
+}
+
+.showtime-day-label {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: #1e293b;
+}
+
+.showtime-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.showtime-card {
+  padding: 1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.showtime-card:hover {
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-decoration: none;
+  color: inherit;
+}
+
+.showtime-venue {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.showtime-date,
+.showtime-time {
+  font-size: 0.85rem;
+  color: #64748b;
+}

@@ -1,0 +1,33 @@
+# Render Blueprint: deploy backend + frontend (static)
+# MongoDB: use Render MongoDB add-on or external (e.g. MongoDB Atlas). Set MONGODB_URI in backend env.
+# After connecting repo, add secrets in Dashboard: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (if using Docker images from Hub).
+
+services:
+  # Backend API (Node or Docker)
+  - type: web
+    name: movie-booking-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+
+  # Frontend: static site (build from repo) or use Docker image
+  - type: web
+    name: movie-booking-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    # Set VITE_API_URL to backend URL (e.g. https://movie-booking-backend.onrender.com) when building

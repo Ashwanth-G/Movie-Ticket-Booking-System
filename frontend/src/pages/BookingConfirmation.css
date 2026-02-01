@@ -1,0 +1,45 @@
+.confirmation-page h1 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.confirm-summary {
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  max-width: 400px;
+}
+
+.confirm-summary p {
+  margin: 0.25rem 0;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.confirmation-success {
+  padding: 2rem;
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.confirmation-success h1 {
+  color: #16a34a;
+  margin-bottom: 1rem;
+}
+
+.booking-id {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.confirmation-success .meta {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.confirmation-success .btn {
+  margin-top: 1.5rem;
+}

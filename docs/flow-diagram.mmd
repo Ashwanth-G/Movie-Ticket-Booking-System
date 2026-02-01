@@ -1,0 +1,10 @@
+%% User flow diagram - export to flow-diagram.png using Mermaid Live Editor or CLI
+flowchart LR
+    A[Login / Register] --> B[Movie Listing]
+    B --> C[Movie Details + Showtimes]
+    C --> D[Seat Selection]
+    D --> E[Lock Seats - 5 min]
+    E --> F[Confirm Booking]
+    F --> G[Booking Confirmation]
+    G --> H[My Bookings]
+    E -.->|Timeout or Failure| I[Release Lock]
