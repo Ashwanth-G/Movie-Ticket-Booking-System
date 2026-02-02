@@ -230,7 +230,7 @@ A complete demo walkthrough covering:
 - Admin features
 - Deployment
 
-📎 **Demo Video:** *(/docs/demo-video)*
+📎 **Demo Video:** https://drive.google.com/file/d/1PxZXlZw-hC8fylKHuhoyjxiao-x48vtu/view?usp=sharing
 
 ---
 
