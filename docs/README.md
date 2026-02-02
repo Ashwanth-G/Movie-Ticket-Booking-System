@@ -65,6 +65,7 @@ To design and implement a **scalable, secure, and deployable** movie ticket book
 - GitHub Actions (CI/CD)
 - Docker Hub
 - AWS EC2 (Deployment)
+- Nginx (Microservices Gateway)
 - Postman (API testing)
 - Git & GitHub
 - Cursor (AI-assisted development)
